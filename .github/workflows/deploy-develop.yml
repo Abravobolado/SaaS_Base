@@ -1,0 +1,49 @@
+# .github/workflows/deploy-develop.yml
+name: Deploy Develop
+
+on:
+  push:
+    branches: [ develop ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with: { node-version: '18.x' }
+      - run: pnpm install
+      - run: pnpm build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & Push Dev Image
+        run: |
+          docker-compose \
+            -f docker/dev/docker-compose.yml \
+            -f docker/dev/docker-compose.postgres.yml \
+            build
+          docker tag saas_base_dev:latest ${DOCKERHUB_USER}/saas_base:develop
+          docker push ${DOCKERHUB_USER}/saas_base:develop
+
+      - name: Deploy to Staging via SSH
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.DEV_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          script: |
+            cd /srv/saas_base
+            docker-compose pull
+            docker-compose up -d --remove-orphans
+
