@@ -1,0 +1,21 @@
+# .github/workflows/dependabot-schedule.yml
+name: Dependabot Schedule
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'  # todos los lunes a las 03:00 UTC
+
+jobs:
+  update-deps:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Dependabot
+        uses: dependabot/fetch-metadata@v1
+      - name: Create Pull Request
+        uses: dependabot/create-pull-request@v3
+        with:
+          package-ecosystem: "npm"
+          directory: "/"
+          target-branch: "develop"
+          schedule: "weekly"
+
